@@ -3,6 +3,7 @@
 import { useAudioRecorder, RecordingState } from "@/hooks/use-audio-recorder";
 import { AudioVisualizer } from "@/components/audio-visualizer";
 import { useAppStore } from "@/stores/app-store";
+import { useUploadVoiceNote } from "@/hooks/use-upload-voice-note";
 
 /** Format seconds as mm:ss */
 function formatTime(seconds: number): string {
@@ -21,6 +22,7 @@ export function VoiceRecorder() {
   const { state, duration, audioBlob, audioUrl, analyserNode, start, pause, resume, stop, reset } =
     useAudioRecorder();
   const setRecording = useAppStore((s) => s.setRecording);
+  const uploadMutation = useUploadVoiceNote();
 
   const handleStart = async () => {
     try {
@@ -38,7 +40,13 @@ export function VoiceRecorder() {
 
   const handleReset = () => {
     reset();
+    uploadMutation.reset();
     setRecording(false);
+  };
+
+  const handleUpload = () => {
+    if (!audioBlob) return;
+    uploadMutation.mutate(audioBlob);
   };
 
   return (
@@ -58,6 +66,25 @@ export function VoiceRecorder() {
 
       {/* Recording state label */}
       <StatusLabel state={state} />
+
+      {/* Upload status feedback */}
+      {uploadMutation.isPending && (
+        <p className="text-sm text-blue-500">Uploading...</p>
+      )}
+      {uploadMutation.isSuccess && (
+        <div className="rounded-lg border border-green-500/30 bg-green-50 p-4 text-sm text-green-700 dark:bg-green-950/20 dark:text-green-400">
+          <p className="font-medium">Uploaded successfully</p>
+          <p className="mt-1 text-xs opacity-70">
+            ID: {uploadMutation.data.id} &middot;{" "}
+            {(uploadMutation.data.file_size / 1024).toFixed(1)} KB
+          </p>
+        </div>
+      )}
+      {uploadMutation.isError && (
+        <p className="text-sm text-red-500">
+          Upload failed: {uploadMutation.error.message}
+        </p>
+      )}
 
       {/* Control buttons */}
       <div className="flex items-center gap-4">
@@ -82,8 +109,11 @@ export function VoiceRecorder() {
         {state === "stopped" && (
           <>
             <ControlButton onClick={handleReset} label="New Recording" icon="reset" />
-            {/* Upload button will be wired in Phase 3 */}
-            <UploadButton audioBlob={audioBlob} />
+            <UploadButton
+              onClick={handleUpload}
+              disabled={!audioBlob || uploadMutation.isPending || uploadMutation.isSuccess}
+              isUploading={uploadMutation.isPending}
+            />
           </>
         )}
       </div>
@@ -121,7 +151,6 @@ function RecordButton({ onClick, label }: { onClick: () => void; label: string }
       className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white shadow-lg transition-transform hover:scale-105 hover:bg-red-600 active:scale-95"
       aria-label={label}
     >
-      {/* Microphone icon */}
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="9" y="1" width="6" height="12" rx="3" />
         <path d="M5 10a7 7 0 0 0 14 0" />
@@ -139,7 +168,6 @@ function StopButton({ onClick }: { onClick: () => void }) {
       className="flex h-16 w-16 items-center justify-center rounded-full bg-foreground text-background shadow-lg transition-transform hover:scale-105 active:scale-95"
       aria-label="Stop"
     >
-      {/* Stop square icon */}
       <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
         <rect x="6" y="6" width="12" height="12" rx="2" />
       </svg>
@@ -184,25 +212,35 @@ function ControlButton({
   );
 }
 
-function UploadButton({ audioBlob }: { audioBlob: Blob | null }) {
-  const handleUpload = () => {
-    if (!audioBlob) return;
-    // Upload logic will be wired in Phase 3
-    alert(`Ready to upload: ${(audioBlob.size / 1024).toFixed(1)} KB`);
-  };
-
+function UploadButton({
+  onClick,
+  disabled,
+  isUploading,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+  isUploading: boolean;
+}) {
   return (
     <button
-      onClick={handleUpload}
-      disabled={!audioBlob}
+      onClick={onClick}
+      disabled={disabled}
       className="flex h-12 items-center gap-2 rounded-full bg-blue-600 px-5 text-sm font-medium text-white shadow-md transition-transform hover:scale-105 hover:bg-blue-700 active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
     >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-        <polyline points="17 8 12 3 7 8" />
-        <line x1="12" y1="3" x2="12" y2="15" />
-      </svg>
-      Save & Process
+      {isUploading ? (
+        // Spinner
+        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="17 8 12 3 7 8" />
+          <line x1="12" y1="3" x2="12" y2="15" />
+        </svg>
+      )}
+      {isUploading ? "Uploading..." : "Save & Process"}
     </button>
   );
 }
