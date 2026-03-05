@@ -3,6 +3,14 @@
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/services/api";
 
+export interface StructuredMemory {
+  type: "idea" | "task" | "note";
+  title: string;
+  content: string;
+  tags: string[];
+  action_items: string[];
+}
+
 export interface VoiceNoteFullResult {
   id: string;
   filename: string;
@@ -12,13 +20,13 @@ export interface VoiceNoteFullResult {
   transcript: string | null;
   language: string | null;
   duration_seconds: number;
+  memory: StructuredMemory | null;
   status: string;
   created_at: string;
 }
 
 /**
- * React Query mutation that uploads audio and transcribes it in one call.
- * Uses the /api/voice-notes/upload-and-transcribe endpoint.
+ * React Query mutation: upload audio → transcribe → structure into memory.
  */
 export function useUploadVoiceNote() {
   return useMutation({

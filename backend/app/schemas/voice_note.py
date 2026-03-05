@@ -1,7 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel
 
-from app.schemas.memory import VoiceNoteStatus
+from app.schemas.memory import MemoryType, VoiceNoteStatus
 
 
 class VoiceNoteUploadResponse(BaseModel):
@@ -23,8 +23,27 @@ class TranscriptionResponse(BaseModel):
     duration_seconds: float
 
 
+class StructuredMemory(BaseModel):
+    """The LLM-extracted structure from a transcript."""
+    type: MemoryType
+    title: str
+    content: str
+    tags: list[str]
+    action_items: list[str]
+
+
+class StructureRequest(BaseModel):
+    """Request body for standalone structuring endpoint."""
+    transcript: str
+
+
+class StructureResponse(BaseModel):
+    """Response from standalone structuring endpoint."""
+    memory: StructuredMemory
+
+
 class VoiceNoteFullResponse(BaseModel):
-    """Combined upload + transcription result for the unified endpoint."""
+    """Combined upload + transcription + structuring result."""
     id: str
     filename: str
     audio_url: str
@@ -33,5 +52,6 @@ class VoiceNoteFullResponse(BaseModel):
     transcript: str | None
     language: str | None
     duration_seconds: float
+    memory: StructuredMemory | None
     status: VoiceNoteStatus
     created_at: datetime

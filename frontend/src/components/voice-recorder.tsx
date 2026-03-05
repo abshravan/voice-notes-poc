@@ -4,6 +4,7 @@ import { useAudioRecorder, RecordingState } from "@/hooks/use-audio-recorder";
 import { AudioVisualizer } from "@/components/audio-visualizer";
 import { useAppStore } from "@/stores/app-store";
 import { useUploadVoiceNote } from "@/hooks/use-upload-voice-note";
+import { MemoryCard } from "@/components/memory-card";
 
 /** Format seconds as mm:ss */
 function formatTime(seconds: number): string {
@@ -88,7 +89,13 @@ export function VoiceRecorder() {
                 ` \u00b7 ${uploadMutation.data.duration_seconds.toFixed(1)}s`}
             </p>
           </div>
-          {uploadMutation.data.transcript && (
+          {/* Show structured memory card if LLM produced one */}
+          {uploadMutation.data.memory ? (
+            <MemoryCard
+              memory={uploadMutation.data.memory}
+              transcript={uploadMutation.data.transcript}
+            />
+          ) : uploadMutation.data.transcript ? (
             <div className="rounded-lg border border-foreground/10 p-4">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-foreground/40">
                 Transcript
@@ -96,13 +103,8 @@ export function VoiceRecorder() {
               <p className="text-sm leading-relaxed text-foreground/80">
                 {uploadMutation.data.transcript}
               </p>
-              {uploadMutation.data.language && uploadMutation.data.language !== "unknown" && (
-                <p className="mt-2 text-xs text-foreground/40">
-                  Language: {uploadMutation.data.language}
-                </p>
-              )}
             </div>
-          )}
+          ) : null}
         </div>
       )}
       {uploadMutation.isError && (
