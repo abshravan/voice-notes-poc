@@ -53,5 +53,6 @@ class VoiceNoteFullResponse(BaseModel):
     language: str | None
     duration_seconds: float
     memory: StructuredMemory | None
+    memory_id: str | None = None
     status: VoiceNoteStatus
     created_at: datetime

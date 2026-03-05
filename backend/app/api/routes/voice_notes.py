@@ -174,6 +174,7 @@ async def upload_and_transcribe(
         language=transcript_result["language"],
         duration_seconds=transcript_result["duration_seconds"],
         memory=memory_data,
+        memory_id=memory_id,
         status=VoiceNoteStatus.done,
         created_at=vn.created_at,
     )

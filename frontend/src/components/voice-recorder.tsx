@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useAudioRecorder, RecordingState } from "@/hooks/use-audio-recorder";
 import { AudioVisualizer } from "@/components/audio-visualizer";
 import { useAppStore } from "@/stores/app-store";
@@ -105,6 +106,14 @@ export function VoiceRecorder() {
               </p>
             </div>
           ) : null}
+          {uploadMutation.data.memory_id && (
+            <Link
+              href={`/memories/${uploadMutation.data.memory_id}`}
+              className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+            >
+              View memory &rarr;
+            </Link>
+          )}
         </div>
       )}
       {uploadMutation.isError && (

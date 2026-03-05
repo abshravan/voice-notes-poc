@@ -6,7 +6,10 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import func, select
+
 from app.core.database import get_db
+from app.models.memory import Memory
 from app.services import crud
 from app.services.embeddings import generate_embedding
 from app.services.storage import download_audio
@@ -28,6 +31,22 @@ async def list_memories(
     """List all memories, optionally filtered by type."""
     memories = await crud.list_memories(db, memory_type=type, limit=limit, offset=offset)
     return [_to_response(m) for m in memories]
+
+
+@router.get("/stats")
+async def memory_stats(db: AsyncSession = Depends(get_db)):
+    """Return counts of memories by type."""
+    result = await db.execute(
+        select(Memory.type, func.count()).group_by(Memory.type)
+    )
+    counts = {row[0]: row[1] for row in result.all()}
+    total = sum(counts.values())
+    return {
+        "total": total,
+        "ideas": counts.get("idea", 0),
+        "tasks": counts.get("task", 0),
+        "notes": counts.get("note", 0),
+    }
 
 
 @router.post("/search", response_model=list[SearchResult])

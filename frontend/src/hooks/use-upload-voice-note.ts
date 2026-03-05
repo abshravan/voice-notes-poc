@@ -21,6 +21,7 @@ export interface VoiceNoteFullResult {
   language: string | null;
   duration_seconds: number;
   memory: StructuredMemory | null;
+  memory_id: string | null;
   status: string;
   created_at: string;
 }

@@ -74,21 +74,20 @@ export default function SearchPage() {
               {searchMutation.data.length} result{searchMutation.data.length !== 1 ? "s" : ""}
             </p>
             {searchMutation.data.map((result) => (
-              <div key={result.memory.id} className="w-full max-w-md">
+              <Link key={result.memory.id} href={`/memories/${result.memory.id}`} className="w-full max-w-md">
                 <MemoryCard
                   memory={{
                     type: result.memory.type,
                     title: result.memory.title,
                     content: result.memory.content,
                     tags: result.memory.tags,
-                    action_items: [],
+                    action_items: result.memory.action_items || [],
                   }}
-                  transcript={result.memory.transcript}
                 />
                 <p className="mt-1 text-right text-xs text-foreground/30">
                   Relevance: {(result.score * 100).toFixed(1)}%
                 </p>
-              </div>
+              </Link>
             ))}
           </div>
         )}

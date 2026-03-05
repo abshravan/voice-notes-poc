@@ -10,7 +10,16 @@ from app.main import app
 client = TestClient(app)
 
 
-# Re-export override_db fixture from conftest for explicit use in tests
+
+def test_stats_empty():
+    """Test stats endpoint returns zeros when DB is empty."""
+    response = client.get("/api/memories/stats")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 0
+    assert data["ideas"] == 0
+    assert data["tasks"] == 0
+    assert data["notes"] == 0
 
 
 def test_list_memories_empty():

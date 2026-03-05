@@ -9,6 +9,7 @@ export interface SearchResultMemory {
   title: string;
   content: string;
   tags: string[];
+  action_items: string[];
   audio_url: string | null;
   transcript: string;
   created_at: string;
