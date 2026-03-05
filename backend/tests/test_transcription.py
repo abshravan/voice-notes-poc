@@ -46,7 +46,7 @@ def test_transcribe_endpoint():
 
 
 def test_upload_and_transcribe_endpoint():
-    """Test the unified upload + transcribe endpoint."""
+    """Test the unified upload + transcribe + structure endpoint."""
     with (
         patch(
             "app.api.routes.voice_notes.upload_audio",
@@ -58,6 +58,17 @@ def test_upload_and_transcribe_endpoint():
             new_callable=AsyncMock,
             return_value=MOCK_TRANSCRIPT_RESULT,
         ),
+        patch(
+            "app.api.routes.voice_notes.structure_transcript",
+            new_callable=AsyncMock,
+            return_value={
+                "type": "note",
+                "title": "Test recording about ML",
+                "content": "A test recording about machine learning.",
+                "tags": ["ml"],
+                "action_items": [],
+            },
+        ),
     ):
         response = client.post(
             "/api/voice-notes/upload-and-transcribe",
@@ -66,13 +77,14 @@ def test_upload_and_transcribe_endpoint():
 
         assert response.status_code == 200
         data = response.json()
-        # Should have both storage and transcript fields
         assert data["audio_url"] == "http://localhost:9000/voice-notes/audio/test.webm"
         assert data["transcript"] == "Hello, this is a test recording about machine learning."
         assert data["language"] == "en"
         assert data["duration_seconds"] == 5.2
         assert data["status"] == "done"
         assert data["file_size"] == 2048
+        assert data["memory"] is not None
+        assert data["memory"]["type"] == "note"
 
 
 def test_transcribe_invalid_format():

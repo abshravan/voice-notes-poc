@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.routes import health
 from app.api.routes import voice_notes
+from app.api.routes import memories
 
 logger = logging.getLogger(__name__)
 
@@ -42,3 +43,4 @@ app.add_middleware(
 # Register routes
 app.include_router(health.router, tags=["health"])
 app.include_router(voice_notes.router)
+app.include_router(memories.router)

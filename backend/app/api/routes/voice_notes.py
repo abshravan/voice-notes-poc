@@ -1,8 +1,11 @@
+import logging
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.database import get_db
 from app.services.storage import (
     upload_audio,
     ALLOWED_AUDIO_TYPES,
@@ -10,6 +13,7 @@ from app.services.storage import (
 )
 from app.services.transcription import transcribe_audio
 from app.services.structuring import structure_transcript
+from app.services import crud
 from app.schemas.voice_note import (
     VoiceNoteUploadResponse,
     TranscriptionResponse,
@@ -18,13 +22,18 @@ from app.schemas.voice_note import (
     StructuredMemory,
     VoiceNoteFullResponse,
 )
-from app.schemas.memory import VoiceNoteStatus
+from app.schemas.memory import MemoryResponse, MemoryType, MemoryStatus, VoiceNoteStatus
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/voice-notes", tags=["voice-notes"])
 
 
 @router.post("/upload", response_model=VoiceNoteUploadResponse)
-async def upload_voice_note(file: UploadFile = File(...)):
+async def upload_voice_note(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
     """Upload an audio file without transcription or structuring."""
     file_bytes, content_type, filename = await _validate_and_read(file)
 
@@ -34,14 +43,23 @@ async def upload_voice_note(file: UploadFile = File(...)):
         content_type=content_type,
     )
 
-    return VoiceNoteUploadResponse(
-        id=uuid.uuid4().hex,
+    vn = await crud.create_voice_note(
+        db,
         filename=result["original_filename"],
         audio_url=result["audio_url"],
         file_size=result["file_size"],
         content_type=result["content_type"],
+        status="uploading",
+    )
+
+    return VoiceNoteUploadResponse(
+        id=vn.id,
+        filename=vn.filename,
+        audio_url=vn.audio_url,
+        file_size=vn.file_size,
+        content_type=vn.content_type,
         status=VoiceNoteStatus.uploading,
-        created_at=datetime.now(timezone.utc),
+        created_at=vn.created_at,
     )
 
 
@@ -61,10 +79,7 @@ async def transcribe_voice_note(file: UploadFile = File(...)):
 
 @router.post("/structure", response_model=StructureResponse)
 async def structure_text(request: StructureRequest):
-    """
-    Structure a transcript into a typed memory using the LLM.
-    Standalone endpoint — useful for re-processing or testing.
-    """
+    """Structure a transcript into a typed memory using the LLM."""
     if not request.transcript.strip():
         raise HTTPException(status_code=400, detail="Transcript cannot be empty.")
 
@@ -73,9 +88,12 @@ async def structure_text(request: StructureRequest):
 
 
 @router.post("/upload-and-transcribe", response_model=VoiceNoteFullResponse)
-async def upload_and_transcribe(file: UploadFile = File(...)):
+async def upload_and_transcribe(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
     """
-    Full pipeline: upload → transcribe → structure into memory.
+    Full pipeline: upload → transcribe → structure → persist.
     This is the primary endpoint the frontend uses.
     """
     file_bytes, content_type, filename = await _validate_and_read(file)
@@ -93,22 +111,51 @@ async def upload_and_transcribe(file: UploadFile = File(...)):
 
     # Step 3: Structure with LLM
     memory_data = None
+    memory_id = None
     if transcript and not transcript.startswith("[Transcription unavailable"):
         structured = await structure_transcript(transcript)
         memory_data = StructuredMemory(**structured)
 
-    return VoiceNoteFullResponse(
-        id=uuid.uuid4().hex,
+        # Step 4: Persist memory to DB
+        mem = await crud.create_memory(
+            db,
+            type=structured["type"],
+            title=structured["title"],
+            content=structured["content"],
+            transcript=transcript,
+            tags=structured["tags"],
+            action_items=structured.get("action_items", []),
+            audio_url=storage_result["audio_url"],
+            status="processed",
+        )
+        memory_id = mem.id
+
+    # Step 5: Persist voice note to DB
+    vn = await crud.create_voice_note(
+        db,
         filename=storage_result["original_filename"],
         audio_url=storage_result["audio_url"],
         file_size=storage_result["file_size"],
         content_type=storage_result["content_type"],
+        duration_seconds=transcript_result["duration_seconds"],
+        transcript=transcript,
+        language=transcript_result["language"],
+        status="done",
+        memory_id=memory_id,
+    )
+
+    return VoiceNoteFullResponse(
+        id=vn.id,
+        filename=vn.filename,
+        audio_url=vn.audio_url,
+        file_size=vn.file_size,
+        content_type=vn.content_type,
         transcript=transcript,
         language=transcript_result["language"],
         duration_seconds=transcript_result["duration_seconds"],
         memory=memory_data,
         status=VoiceNoteStatus.done,
-        created_at=datetime.now(timezone.utc),
+        created_at=vn.created_at,
     )
 
 
