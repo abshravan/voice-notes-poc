@@ -3,13 +3,15 @@
 import logging
 
 from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.services import crud
 from app.services.embeddings import generate_embedding
+from app.services.storage import download_audio
 from app.services.vector_store import search_memories as vector_search
-from app.schemas.memory import MemoryResponse, SearchQuery, SearchResult
+from app.schemas.memory import MemoryResponse, MemoryUpdate, SearchQuery, SearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +42,6 @@ async def search_memories(
     if not query.query.strip():
         raise HTTPException(status_code=400, detail="Search query cannot be empty.")
 
-    # Generate embedding for the search query
     embedding = await generate_embedding(query.query)
     if embedding is None:
         raise HTTPException(
@@ -48,7 +49,6 @@ async def search_memories(
             detail="Embedding service unavailable. Check OpenAI API key.",
         )
 
-    # Search Qdrant for nearest vectors
     try:
         vector_results = await vector_search(
             query_embedding=embedding,
@@ -61,7 +61,6 @@ async def search_memories(
             detail="Vector search unavailable. Check Qdrant connection.",
         )
 
-    # Hydrate results from DB for full memory data
     results = []
     for vr in vector_results:
         mem = await crud.get_memory(db, vr["id"])
@@ -85,6 +84,60 @@ async def get_memory(memory_id: str, db: AsyncSession = Depends(get_db)):
     return _to_response(mem)
 
 
+@router.patch("/{memory_id}", response_model=MemoryResponse)
+async def update_memory(
+    memory_id: str,
+    body: MemoryUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update editable fields on a memory."""
+    updates = body.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update.")
+
+    mem = await crud.update_memory(db, memory_id, **updates)
+    if not mem:
+        raise HTTPException(status_code=404, detail="Memory not found.")
+
+    await db.commit()
+    return _to_response(mem)
+
+
+@router.get("/{memory_id}/audio")
+async def get_memory_audio(memory_id: str, db: AsyncSession = Depends(get_db)):
+    """Proxy audio from S3/MinIO so the browser can play it directly."""
+    mem = await crud.get_memory(db, memory_id)
+    if not mem:
+        raise HTTPException(status_code=404, detail="Memory not found.")
+    if not mem.audio_url:
+        raise HTTPException(status_code=404, detail="No audio associated with this memory.")
+
+    # Extract storage key from the audio URL
+    # URL format: http://minio:9000/voice-notes/audio/<uuid>.ext
+    try:
+        storage_key = "/".join(mem.audio_url.split("/")[-2:])  # "audio/<uuid>.webm"
+        audio_bytes = await download_audio(storage_key)
+    except Exception as e:
+        logger.error("Failed to download audio for memory %s: %s", memory_id, e)
+        raise HTTPException(status_code=502, detail="Failed to retrieve audio file.")
+
+    ext = storage_key.rsplit(".", 1)[-1] if "." in storage_key else "webm"
+    content_types = {
+        "webm": "audio/webm",
+        "wav": "audio/wav",
+        "mp3": "audio/mpeg",
+        "m4a": "audio/mp4",
+        "ogg": "audio/ogg",
+        "flac": "audio/flac",
+    }
+
+    return Response(
+        content=audio_bytes,
+        media_type=content_types.get(ext, "audio/webm"),
+        headers={"Content-Disposition": f'inline; filename="memory-{memory_id}.{ext}"'},
+    )
+
+
 @router.delete("/{memory_id}", status_code=204)
 async def delete_memory(memory_id: str, db: AsyncSession = Depends(get_db)):
     """Delete a memory by ID."""
@@ -100,6 +153,7 @@ def _to_response(mem) -> MemoryResponse:
         title=mem.title,
         content=mem.content,
         tags=mem.tags or [],
+        action_items=mem.action_items or [],
         audio_url=mem.audio_url,
         transcript=mem.transcript,
         created_at=mem.created_at,

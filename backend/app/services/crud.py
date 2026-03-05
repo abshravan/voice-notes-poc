@@ -57,6 +57,16 @@ async def list_memories(
     return list(result.scalars().all())
 
 
+async def update_memory(db: AsyncSession, memory_id: str, **kwargs) -> Memory | None:
+    mem = await db.get(Memory, memory_id)
+    if not mem:
+        return None
+    for key, value in kwargs.items():
+        setattr(mem, key, value)
+    await db.flush()
+    return mem
+
+
 async def delete_memory(db: AsyncSession, memory_id: str) -> bool:
     mem = await db.get(Memory, memory_id)
     if not mem:

@@ -21,16 +21,24 @@ const TYPE_STYLES = {
   },
 };
 
+function formatTime(dateStr: string) {
+  return new Date(dateStr).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 interface MemoryCardProps {
   memory: StructuredMemory;
   transcript?: string | null;
+  timestamp?: string | null;
 }
 
 /**
  * Displays a structured memory with type badge, title, content, tags,
  * and action items (for tasks).
  */
-export function MemoryCard({ memory, transcript }: MemoryCardProps) {
+export function MemoryCard({ memory, transcript, timestamp }: MemoryCardProps) {
   const style = TYPE_STYLES[memory.type] || TYPE_STYLES.note;
 
   return (
@@ -43,10 +51,15 @@ export function MemoryCard({ memory, transcript }: MemoryCardProps) {
         <h3 className="text-base font-semibold leading-tight text-foreground">
           {memory.title}
         </h3>
+        {timestamp && (
+          <span className="ml-auto shrink-0 text-xs text-foreground/30">
+            {formatTime(timestamp)}
+          </span>
+        )}
       </div>
 
       {/* Structured content */}
-      <p className="text-sm leading-relaxed text-foreground/75">
+      <p className="text-sm leading-relaxed text-foreground/75 line-clamp-3">
         {memory.content}
       </p>
 

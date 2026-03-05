@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
-import { useMemories } from "@/hooks/use-memories";
+import { useMemories, type MemoryItem } from "@/hooks/use-memories";
 import { MemoryCard } from "@/components/memory-card";
 
 const FILTER_OPTIONS = [
@@ -12,9 +12,49 @@ const FILTER_OPTIONS = [
   { label: "Notes", value: "note" },
 ] as const;
 
+function groupByDate(memories: MemoryItem[]) {
+  const groups: { label: string; items: MemoryItem[] }[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  for (const mem of memories) {
+    const date = new Date(mem.created_at);
+    date.setHours(0, 0, 0, 0);
+
+    let label: string;
+    if (date.getTime() === today.getTime()) {
+      label = "Today";
+    } else if (date.getTime() === yesterday.getTime()) {
+      label = "Yesterday";
+    } else {
+      label = date.toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      });
+    }
+
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) {
+      last.items.push(mem);
+    } else {
+      groups.push({ label, items: [mem] });
+    }
+  }
+
+  return groups;
+}
+
 export default function MemoriesPage() {
   const [filter, setFilter] = useState<string | undefined>(undefined);
   const { data: memories, isLoading, error } = useMemories(filter);
+
+  const grouped = useMemo(
+    () => (memories ? groupByDate(memories) : []),
+    [memories],
+  );
 
   return (
     <div className="flex min-h-screen flex-col items-center bg-background">
@@ -73,20 +113,30 @@ export default function MemoriesPage() {
           </div>
         )}
 
-        {memories && memories.length > 0 && (
-          <div className="flex flex-col items-center gap-4">
-            {memories.map((mem) => (
-              <MemoryCard
-                key={mem.id}
-                memory={{
-                  type: mem.type,
-                  title: mem.title,
-                  content: mem.content,
-                  tags: mem.tags,
-                  action_items: [],
-                }}
-                transcript={mem.transcript}
-              />
+        {grouped.length > 0 && (
+          <div className="flex flex-col gap-6">
+            {grouped.map((group) => (
+              <section key={group.label}>
+                <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground/40">
+                  {group.label}
+                </h2>
+                <div className="flex flex-col items-center gap-4">
+                  {group.items.map((mem) => (
+                    <Link key={mem.id} href={`/memories/${mem.id}`} className="w-full max-w-md">
+                      <MemoryCard
+                        memory={{
+                          type: mem.type,
+                          title: mem.title,
+                          content: mem.content,
+                          tags: mem.tags,
+                          action_items: mem.action_items || [],
+                        }}
+                        timestamp={mem.created_at}
+                      />
+                    </Link>
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
         )}

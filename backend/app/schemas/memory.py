@@ -31,12 +31,20 @@ class MemoryCreate(BaseModel):
     transcript: str
 
 
+class MemoryUpdate(BaseModel):
+    title: str | None = None
+    content: str | None = None
+    type: MemoryType | None = None
+    tags: list[str] | None = None
+
+
 class MemoryResponse(BaseModel):
     id: str
     type: MemoryType
     title: str
     content: str
     tags: list[str]
+    action_items: list[str]
     audio_url: str | None
     transcript: str
     created_at: datetime

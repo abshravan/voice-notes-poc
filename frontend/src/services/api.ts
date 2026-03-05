@@ -43,6 +43,26 @@ class ApiClient {
     });
   }
 
+  async patch<T>(path: string, body: unknown): Promise<T> {
+    return this.request<T>(path, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  }
+
+  async delete(path: string): Promise<void> {
+    const url = `${this.baseUrl}${path}`;
+    const response = await fetch(url, { method: "DELETE" });
+    if (!response.ok && response.status !== 204) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || `Delete error: ${response.status}`);
+    }
+  }
+
+  audioUrl(memoryId: string): string {
+    return `${this.baseUrl}/api/memories/${memoryId}/audio`;
+  }
+
   // Upload a file (audio) — uses FormData, no JSON content-type
   async upload<T>(path: string, formData: FormData): Promise<T> {
     const url = `${this.baseUrl}${path}`;
