@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background">
@@ -11,6 +13,20 @@ export default function Home() {
             query them with natural language.
           </p>
         </div>
+
+        {/* Primary action */}
+        <Link
+          href="/record"
+          className="flex h-14 items-center gap-3 rounded-full bg-red-500 px-8 text-lg font-semibold text-white shadow-lg transition-transform hover:scale-105 hover:bg-red-600 active:scale-95"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="1" width="6" height="12" rx="3" />
+            <path d="M5 10a7 7 0 0 0 14 0" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+          </svg>
+          New Voice Note
+        </Link>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[
