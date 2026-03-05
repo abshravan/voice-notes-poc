@@ -11,6 +11,15 @@ client = TestClient(app)
 
 
 
+def test_graph_empty():
+    """Test graph endpoint returns empty nodes and edges when DB is empty."""
+    response = client.get("/api/memories/graph")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["nodes"] == []
+    assert data["edges"] == []
+
+
 def test_stats_empty():
     """Test stats endpoint returns zeros when DB is empty."""
     response = client.get("/api/memories/stats")

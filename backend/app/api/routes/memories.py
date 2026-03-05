@@ -33,6 +33,44 @@ async def list_memories(
     return [_to_response(m) for m in memories]
 
 
+@router.get("/graph")
+async def memory_graph(db: AsyncSession = Depends(get_db)):
+    """Return nodes and edges for the graph visualization.
+
+    Nodes are memories. Edges connect memories that share at least one tag.
+    Tag nodes are also included as smaller connector nodes.
+    """
+    memories = await crud.list_memories(db, limit=200)
+
+    nodes = []
+    tag_set: dict[str, list[str]] = {}  # tag -> list of memory IDs
+
+    for mem in memories:
+        nodes.append({
+            "id": mem.id,
+            "label": mem.title,
+            "type": mem.type,
+            "group": "memory",
+        })
+        for tag in (mem.tags or []):
+            tag_set.setdefault(tag, []).append(mem.id)
+
+    # Add tag nodes and edges
+    edges = []
+    for tag, mem_ids in tag_set.items():
+        tag_id = f"tag:{tag}"
+        nodes.append({
+            "id": tag_id,
+            "label": f"#{tag}",
+            "type": "tag",
+            "group": "tag",
+        })
+        for mid in mem_ids:
+            edges.append({"source": mid, "target": tag_id})
+
+    return {"nodes": nodes, "edges": edges}
+
+
 @router.get("/stats")
 async def memory_stats(db: AsyncSession = Depends(get_db)):
     """Return counts of memories by type."""

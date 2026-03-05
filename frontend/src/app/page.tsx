@@ -61,6 +61,12 @@ export default function Home() {
           >
             Search
           </Link>
+          <Link
+            href="/graph"
+            className="flex h-14 items-center gap-3 rounded-full border border-foreground/15 px-8 text-lg font-semibold text-foreground transition-transform hover:scale-105 hover:bg-foreground/5 active:scale-95"
+          >
+            Mind Map
+          </Link>
         </div>
 
         {/* Stats cards */}

@@ -67,12 +67,20 @@ export default function MemoriesPage() {
           &larr; Home
         </Link>
         <h1 className="text-lg font-semibold">Memories</h1>
-        <Link
-          href="/record"
-          className="text-sm font-medium text-red-500 hover:text-red-600"
-        >
-          + New
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/graph"
+            className="text-sm font-medium text-foreground/60 hover:text-foreground"
+          >
+            Mind Map
+          </Link>
+          <Link
+            href="/record"
+            className="text-sm font-medium text-red-500 hover:text-red-600"
+          >
+            + New
+          </Link>
+        </div>
       </header>
 
       <main className="flex w-full max-w-2xl flex-col gap-4 p-6">
