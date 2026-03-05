@@ -67,17 +67,42 @@ export function VoiceRecorder() {
       {/* Recording state label */}
       <StatusLabel state={state} />
 
-      {/* Upload status feedback */}
+      {/* Upload + transcription status feedback */}
       {uploadMutation.isPending && (
-        <p className="text-sm text-blue-500">Uploading...</p>
+        <div className="flex items-center gap-2 text-sm text-blue-500">
+          <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          Uploading & transcribing...
+        </div>
       )}
       {uploadMutation.isSuccess && (
-        <div className="rounded-lg border border-green-500/30 bg-green-50 p-4 text-sm text-green-700 dark:bg-green-950/20 dark:text-green-400">
-          <p className="font-medium">Uploaded successfully</p>
-          <p className="mt-1 text-xs opacity-70">
-            ID: {uploadMutation.data.id} &middot;{" "}
-            {(uploadMutation.data.file_size / 1024).toFixed(1)} KB
-          </p>
+        <div className="w-full max-w-md space-y-3">
+          <div className="rounded-lg border border-green-500/30 bg-green-50 p-4 text-sm text-green-700 dark:bg-green-950/20 dark:text-green-400">
+            <p className="font-medium">Processed successfully</p>
+            <p className="mt-1 text-xs opacity-70">
+              ID: {uploadMutation.data.id} &middot;{" "}
+              {(uploadMutation.data.file_size / 1024).toFixed(1)} KB
+              {uploadMutation.data.duration_seconds > 0 &&
+                ` \u00b7 ${uploadMutation.data.duration_seconds.toFixed(1)}s`}
+            </p>
+          </div>
+          {uploadMutation.data.transcript && (
+            <div className="rounded-lg border border-foreground/10 p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-foreground/40">
+                Transcript
+              </p>
+              <p className="text-sm leading-relaxed text-foreground/80">
+                {uploadMutation.data.transcript}
+              </p>
+              {uploadMutation.data.language && uploadMutation.data.language !== "unknown" && (
+                <p className="mt-2 text-xs text-foreground/40">
+                  Language: {uploadMutation.data.language}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
       {uploadMutation.isError && (

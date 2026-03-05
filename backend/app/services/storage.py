@@ -73,6 +73,15 @@ async def upload_audio(file_bytes: bytes, original_filename: str, content_type: 
     }
 
 
+async def download_audio(storage_key: str) -> bytes:
+    """Download audio bytes from S3/MinIO by storage key."""
+    client = _get_s3_client()
+    buf = BytesIO()
+    client.download_fileobj(settings.s3_bucket, storage_key, buf)
+    buf.seek(0)
+    return buf.read()
+
+
 def _extension_from_mime(mime: str) -> str:
     """Map MIME type to file extension."""
     mapping = {
