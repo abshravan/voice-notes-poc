@@ -21,6 +21,15 @@ async def lifespan(app: FastAPI):
         logger.info("S3 bucket verified: %s", settings.s3_bucket)
     except Exception as e:
         logger.warning("Could not verify S3 bucket (MinIO may not be running): %s", e)
+
+    # Startup: ensure Qdrant collection exists
+    try:
+        from app.services.vector_store import ensure_collection
+        ensure_collection()
+        logger.info("Qdrant collection verified: %s", settings.qdrant_collection)
+    except Exception as e:
+        logger.warning("Could not verify Qdrant collection (Qdrant may not be running): %s", e)
+
     yield
 
 

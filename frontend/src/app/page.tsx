@@ -34,6 +34,12 @@ export default function Home() {
           >
             My Memories
           </Link>
+          <Link
+            href="/search"
+            className="flex h-14 items-center gap-3 rounded-full border border-foreground/15 px-8 text-lg font-semibold text-foreground transition-transform hover:scale-105 hover:bg-foreground/5 active:scale-95"
+          >
+            Search
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

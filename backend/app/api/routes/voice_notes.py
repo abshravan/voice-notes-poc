@@ -13,6 +13,8 @@ from app.services.storage import (
 )
 from app.services.transcription import transcribe_audio
 from app.services.structuring import structure_transcript
+from app.services.embeddings import generate_embedding
+from app.services.vector_store import upsert_memory as vector_upsert
 from app.services import crud
 from app.schemas.voice_note import (
     VoiceNoteUploadResponse,
@@ -129,6 +131,24 @@ async def upload_and_transcribe(
             status="processed",
         )
         memory_id = mem.id
+
+        # Step 4b: Generate embedding and store in Qdrant
+        embed_text = f"{structured['title']}. {structured['content']}"
+        embedding = await generate_embedding(embed_text)
+        if embedding:
+            try:
+                await vector_upsert(
+                    memory_id=mem.id,
+                    embedding=embedding,
+                    payload={
+                        "type": structured["type"],
+                        "title": structured["title"],
+                        "content": structured["content"],
+                        "tags": structured["tags"],
+                    },
+                )
+            except Exception as e:
+                logger.warning("Vector upsert failed (Qdrant may not be running): %s", e)
 
     # Step 5: Persist voice note to DB
     vn = await crud.create_voice_note(
