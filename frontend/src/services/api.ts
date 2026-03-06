@@ -1,6 +1,8 @@
 // Centralized API client for the Voice Memory backend
+// All /api/* requests are proxied through Next.js rewrites (same-origin),
+// eliminating CORS issues entirely.
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = "";
 
 class ApiClient {
   private baseUrl: string;
