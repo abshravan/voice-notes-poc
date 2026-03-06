@@ -1,9 +1,6 @@
 import uuid
 import logging
-from io import BytesIO
-
-import boto3
-from botocore.exceptions import ClientError
+from pathlib import Path
 
 from app.core.config import settings
 
@@ -24,62 +21,56 @@ ALLOWED_AUDIO_TYPES = {
 MAX_FILE_SIZE = 25 * 1024 * 1024  # 25 MB
 
 
-def _get_s3_client():
-    """Create a boto3 S3 client pointing at MinIO (or real S3)."""
-    return boto3.client(
-        "s3",
-        endpoint_url=settings.s3_endpoint,
-        aws_access_key_id=settings.s3_access_key,
-        aws_secret_access_key=settings.s3_secret_key,
-        region_name=settings.s3_region,
-    )
+def _audio_dir() -> Path:
+    """Return the local directory for storing audio files, creating it if needed."""
+    d = Path(settings.audio_storage_path)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 
 def ensure_bucket_exists() -> None:
-    """Create the audio bucket if it doesn't exist yet."""
-    client = _get_s3_client()
-    try:
-        client.head_bucket(Bucket=settings.s3_bucket)
-    except ClientError:
-        client.create_bucket(Bucket=settings.s3_bucket)
-        logger.info("Created S3 bucket: %s", settings.s3_bucket)
+    """Create the local audio storage directory."""
+    d = _audio_dir()
+    logger.info("Audio storage directory: %s", d.resolve())
 
 
 async def upload_audio(file_bytes: bytes, original_filename: str, content_type: str) -> dict:
-    """
-    Upload audio bytes to S3/MinIO.
-    Returns dict with storage key and public URL.
-    """
+    """Save audio bytes to the local filesystem."""
     ext = _extension_from_mime(content_type)
-    storage_key = f"audio/{uuid.uuid4().hex}{ext}"
+    filename = f"{uuid.uuid4().hex}{ext}"
+    storage_key = f"audio/{filename}"
+    filepath = _audio_dir() / filename
 
-    client = _get_s3_client()
-    client.upload_fileobj(
-        BytesIO(file_bytes),
-        settings.s3_bucket,
-        storage_key,
-        ExtraArgs={"ContentType": content_type},
-    )
-
-    # Construct the URL for later retrieval
-    audio_url = f"{settings.s3_endpoint}/{settings.s3_bucket}/{storage_key}"
+    filepath.write_bytes(file_bytes)
+    logger.info("Saved audio file: %s (%d bytes)", filepath, len(file_bytes))
 
     return {
         "storage_key": storage_key,
-        "audio_url": audio_url,
+        "audio_url": storage_key,
         "file_size": len(file_bytes),
         "content_type": content_type,
         "original_filename": original_filename,
     }
 
 
-async def download_audio(storage_key: str) -> bytes:
-    """Download audio bytes from S3/MinIO by storage key."""
-    client = _get_s3_client()
-    buf = BytesIO()
-    client.download_fileobj(settings.s3_bucket, storage_key, buf)
-    buf.seek(0)
-    return buf.read()
+async def download_audio(audio_url_or_key: str) -> bytes:
+    """Read audio bytes from local filesystem."""
+    filename = _extract_filename(audio_url_or_key)
+    filepath = _audio_dir() / filename
+
+    if not filepath.exists():
+        raise FileNotFoundError(f"Audio file not found: {filepath}")
+
+    return filepath.read_bytes()
+
+
+def _extract_filename(audio_url_or_key: str) -> str:
+    """Extract just the filename from a key or legacy URL."""
+    if audio_url_or_key.startswith("http"):
+        audio_url_or_key = audio_url_or_key.split("/")[-1]
+    if audio_url_or_key.startswith("audio/"):
+        audio_url_or_key = audio_url_or_key[6:]
+    return audio_url_or_key
 
 
 def _extension_from_mime(mime: str) -> str:

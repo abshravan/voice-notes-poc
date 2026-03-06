@@ -14,9 +14,6 @@ alembic==1.14.1
 # Vector database
 qdrant-client==1.12.1
 
-# Object storage (S3-compatible)
-boto3==1.35.86
-
 # Speech-to-text (local Whisper)
 openai-whisper==20240930
 

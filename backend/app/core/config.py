@@ -16,12 +16,8 @@ class Settings(BaseSettings):
     qdrant_port: int = 6333
     qdrant_collection: str = "memories"
 
-    # S3 / MinIO
-    s3_endpoint: str = "http://localhost:9000"
-    s3_access_key: str = "minioadmin"
-    s3_secret_key: str = "minioadmin"
-    s3_bucket: str = "voice-notes"
-    s3_region: str = "us-east-1"
+    # Audio file storage (local filesystem)
+    audio_storage_path: str = "./audio_files"
 
     # Whisper (local model)
     whisper_model: str = "small"

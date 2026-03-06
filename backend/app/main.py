@@ -15,13 +15,12 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: ensure S3 bucket exists
+    # Startup: ensure audio storage directory exists
     try:
         from app.services.storage import ensure_bucket_exists
         ensure_bucket_exists()
-        logger.info("S3 bucket verified: %s", settings.s3_bucket)
     except Exception as e:
-        logger.warning("Could not verify S3 bucket (MinIO may not be running): %s", e)
+        logger.warning("Could not create audio storage directory: %s", e)
 
     # Startup: ensure Qdrant collection exists
     try:

@@ -12,7 +12,7 @@ client = TestClient(app)
 
 MOCK_STORAGE_RESULT = {
     "storage_key": "audio/test.webm",
-    "audio_url": "http://localhost:9000/voice-notes/audio/test.webm",
+    "audio_url": "audio/test.webm",
     "file_size": 2048,
     "content_type": "audio/webm",
     "original_filename": "test.webm",
@@ -77,7 +77,7 @@ def test_upload_and_transcribe_endpoint():
 
         assert response.status_code == 200
         data = response.json()
-        assert data["audio_url"] == "http://localhost:9000/voice-notes/audio/test.webm"
+        assert data["audio_url"] == "audio/test.webm"
         assert data["transcript"] == "Hello, this is a test recording about machine learning."
         assert data["language"] == "en"
         assert data["duration_seconds"] == 5.2

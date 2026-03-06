@@ -20,7 +20,7 @@ def test_upload_success():
     with patch("app.api.routes.voice_notes.upload_audio", new_callable=AsyncMock) as mock_upload:
         mock_upload.return_value = {
             "storage_key": "audio/test.webm",
-            "audio_url": "http://localhost:9000/voice-notes/audio/test.webm",
+            "audio_url": "audio/test.webm",
             "file_size": 1024,
             "content_type": "audio/webm",
             "original_filename": "test.webm",

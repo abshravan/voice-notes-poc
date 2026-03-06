@@ -169,16 +169,13 @@ async def get_memory_audio(memory_id: str, db: AsyncSession = Depends(get_db)):
     if not mem.audio_url:
         raise HTTPException(status_code=404, detail="No audio associated with this memory.")
 
-    # Extract storage key from the audio URL
-    # URL format: http://minio:9000/voice-notes/audio/<uuid>.ext
     try:
-        storage_key = "/".join(mem.audio_url.split("/")[-2:])  # "audio/<uuid>.webm"
-        audio_bytes = await download_audio(storage_key)
+        audio_bytes = await download_audio(mem.audio_url)
     except Exception as e:
         logger.error("Failed to download audio for memory %s: %s", memory_id, e)
         raise HTTPException(status_code=502, detail="Failed to retrieve audio file.")
 
-    ext = storage_key.rsplit(".", 1)[-1] if "." in storage_key else "webm"
+    ext = mem.audio_url.rsplit(".", 1)[-1] if "." in mem.audio_url else "webm"
     content_types = {
         "webm": "audio/webm",
         "wav": "audio/wav",
