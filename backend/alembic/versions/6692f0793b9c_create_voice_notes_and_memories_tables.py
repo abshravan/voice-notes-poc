@@ -9,7 +9,6 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import ARRAY
 
 
 # revision identifiers, used by Alembic.
@@ -43,8 +42,8 @@ def upgrade() -> None:
         sa.Column('title', sa.String(200), nullable=False),
         sa.Column('content', sa.Text(), nullable=False),
         sa.Column('transcript', sa.Text(), nullable=False, server_default=''),
-        sa.Column('tags', ARRAY(sa.String()), server_default='{}'),
-        sa.Column('action_items', ARRAY(sa.String()), server_default='{}'),
+        sa.Column('tags', sa.JSON(), server_default='[]'),
+        sa.Column('action_items', sa.JSON(), server_default='[]'),
         sa.Column('audio_url', sa.String(512), nullable=True),
         sa.Column('status', sa.String(20), server_default='processed'),
         sa.Column('voice_note_id', sa.String(32), nullable=True),

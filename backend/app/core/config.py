@@ -8,8 +8,8 @@ class Settings(BaseSettings):
     app_name: str = "Voice Memory API"
     debug: bool = False
 
-    # Database
-    database_url: str = "postgresql+asyncpg://voice_user:voice_pass_dev@localhost:5432/voice_memory"
+    # Database (defaults to local SQLite; set to postgresql+asyncpg://... for Postgres)
+    database_url: str = "sqlite+aiosqlite:///./voice_memory.db"
 
     # Qdrant
     qdrant_host: str = "localhost"

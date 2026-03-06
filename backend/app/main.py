@@ -22,6 +22,18 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Could not create audio storage directory: %s", e)
 
+    # Startup: auto-create database tables
+    try:
+        from app.core.database import engine
+        from app.models.base import Base
+        import app.models.voice_note  # noqa: F401
+        import app.models.memory  # noqa: F401
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables verified.")
+    except Exception as e:
+        logger.warning("Could not create database tables: %s", e)
+
     # Startup: ensure Qdrant collection exists
     try:
         from app.services.vector_store import ensure_collection
