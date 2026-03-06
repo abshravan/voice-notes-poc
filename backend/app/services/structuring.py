@@ -1,7 +1,7 @@
 import json
 import logging
 
-from openai import OpenAI
+import httpx
 
 from app.core.config import settings
 
@@ -34,30 +34,35 @@ Respond ONLY with valid JSON in this exact format:
 
 async def structure_transcript(transcript: str) -> dict:
     """
-    Use an LLM to convert raw transcript text into a structured memory.
+    Use a local LLM via Ollama to convert raw transcript text into a structured memory.
     Returns dict with type, title, content, tags, and action_items.
     """
-    if not settings.openai_api_key:
-        logger.warning("No OpenAI API key — returning fallback structure")
-        return _fallback_structure(transcript)
-
-    client = OpenAI(api_key=settings.openai_api_key)
+    ollama_url = settings.ollama_url
+    ollama_model = settings.ollama_model
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Transcript:\n\n{transcript}"},
-            ],
-            temperature=0.3,
-            response_format={"type": "json_object"},
-        )
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            response = await client.post(
+                f"{ollama_url}/api/chat",
+                json={
+                    "model": ollama_model,
+                    "messages": [
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": f"Transcript:\n\n{transcript}"},
+                    ],
+                    "stream": False,
+                    "format": "json",
+                    "options": {
+                        "temperature": 0.3,
+                    },
+                },
+            )
+            response.raise_for_status()
 
-        raw = response.choices[0].message.content
+        data = response.json()
+        raw = data.get("message", {}).get("content", "")
         result = json.loads(raw)
 
-        # Validate required fields
         memory_type = result.get("type", "note")
         if memory_type not in ("idea", "task", "note"):
             memory_type = "note"
@@ -85,7 +90,6 @@ def _fallback_structure(transcript: str) -> dict:
     """Simple heuristic-based fallback when LLM is unavailable."""
     lower = transcript.lower()
 
-    # Basic type detection from keywords
     if any(kw in lower for kw in ["todo", "need to", "should", "must", "reminder", "don't forget"]):
         memory_type = "task"
     elif any(kw in lower for kw in ["idea", "what if", "maybe we could", "imagine", "concept"]):
@@ -93,7 +97,6 @@ def _fallback_structure(transcript: str) -> dict:
     else:
         memory_type = "note"
 
-    # Use first sentence or first 60 chars as title
     title = transcript.split(".")[0].strip()
     if len(title) > 60:
         title = title[:57] + "..."

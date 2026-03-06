@@ -23,8 +23,13 @@ class Settings(BaseSettings):
     s3_bucket: str = "voice-notes"
     s3_region: str = "us-east-1"
 
-    # OpenAI
-    openai_api_key: str = ""
+    # Whisper (local model)
+    whisper_model: str = "small"
+
+    # Ollama (local LLM)
+    ollama_url: str = "http://localhost:11434"
+    ollama_model: str = "mistral"
+    ollama_embed_model: str = "nomic-embed-text"
 
     # CORS
     backend_cors_origins: str = "http://localhost:3000"

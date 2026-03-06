@@ -2,14 +2,13 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 
-// ── Types ────────────────────────────────────────────────
+// -- Types --
 
 interface GraphNode {
   id: string;
   label: string;
   type: string;
   group: "memory" | "tag";
-  // Simulation state
   x: number;
   y: number;
   vx: number;
@@ -27,21 +26,39 @@ interface MemoryGraphProps {
   onNodeClick?: (nodeId: string, group: string) => void;
 }
 
-// ── Color palette ────────────────────────────────────────
+// -- Colors using CSS variables (read at render time) --
 
-const NODE_COLORS: Record<string, string> = {
-  idea: "#a855f7",   // purple
-  task: "#f97316",   // orange
-  note: "#3b82f6",   // blue
-  tag: "#6b7280",    // gray
-};
+function getNodeColors(): Record<string, string> {
+  if (typeof window === "undefined") {
+    return { idea: "#9c6644", task: "#b07838", note: "#4a7c8a", tag: "#8a8680" };
+  }
+  const style = getComputedStyle(document.documentElement);
+  return {
+    idea: style.getPropertyValue("--idea").trim() || "#9c6644",
+    task: style.getPropertyValue("--task").trim() || "#b07838",
+    note: style.getPropertyValue("--note").trim() || "#4a7c8a",
+    tag: style.getPropertyValue("--muted").trim() || "#8a8680",
+  };
+}
+
+function getThemeColors() {
+  if (typeof window === "undefined") {
+    return { bg: "#fafaf8", fg: "#1a1a1a", border: "#e0ddd5" };
+  }
+  const style = getComputedStyle(document.documentElement);
+  return {
+    bg: style.getPropertyValue("--background").trim() || "#fafaf8",
+    fg: style.getPropertyValue("--foreground").trim() || "#1a1a1a",
+    border: style.getPropertyValue("--border").trim() || "#e0ddd5",
+  };
+}
 
 const NODE_RADII: Record<string, number> = {
   memory: 20,
   tag: 10,
 };
 
-// ── Force simulation ─────────────────────────────────────
+// -- Force simulation --
 
 const REPULSION = 800;
 const ATTRACTION = 0.005;
@@ -58,13 +75,11 @@ function simulate(
   const cx = width / 2;
   const cy = height / 2;
 
-  // Build adjacency for fast lookup
   const edgePairs = edges.map((e) => ({
     si: nodes.findIndex((n) => n.id === e.source),
     ti: nodes.findIndex((n) => n.id === e.target),
   })).filter((p) => p.si >= 0 && p.ti >= 0);
 
-  // Repulsion (all pairs)
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       const a = nodes[i];
@@ -82,7 +97,6 @@ function simulate(
     }
   }
 
-  // Attraction (edges)
   for (const { si, ti } of edgePairs) {
     const a = nodes[si];
     const b = nodes[ti];
@@ -98,13 +112,11 @@ function simulate(
     b.vy -= fy;
   }
 
-  // Center gravity
   for (const node of nodes) {
     node.vx += (cx - node.x) * CENTER_GRAVITY;
     node.vy += (cy - node.y) * CENTER_GRAVITY;
   }
 
-  // Integrate
   for (const node of nodes) {
     node.vx *= DAMPING;
     node.vy *= DAMPING;
@@ -113,7 +125,7 @@ function simulate(
   }
 }
 
-// ── Component ────────────────────────────────────────────
+// -- Component --
 
 export function MemoryGraph({ nodes: rawNodes, edges, onNodeClick }: MemoryGraphProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -126,7 +138,6 @@ export function MemoryGraph({ nodes: rawNodes, edges, onNodeClick }: MemoryGraph
   const isPanningRef = useRef(false);
   const lastMouseRef = useRef({ x: 0, y: 0 });
 
-  // Initialize nodes with random positions
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -143,7 +154,6 @@ export function MemoryGraph({ nodes: rawNodes, edges, onNodeClick }: MemoryGraph
     }));
   }, [rawNodes]);
 
-  // Screen to world coordinates
   const screenToWorld = useCallback((sx: number, sy: number) => {
     return {
       x: (sx - panRef.current.x) / scaleRef.current,
@@ -151,7 +161,6 @@ export function MemoryGraph({ nodes: rawNodes, edges, onNodeClick }: MemoryGraph
     };
   }, []);
 
-  // Find node at world position
   const nodeAt = useCallback((wx: number, wy: number): number => {
     const nodes = nodesRef.current;
     for (let i = nodes.length - 1; i >= 0; i--) {
@@ -164,7 +173,6 @@ export function MemoryGraph({ nodes: rawNodes, edges, onNodeClick }: MemoryGraph
     return -1;
   }, []);
 
-  // Animation loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -175,6 +183,8 @@ export function MemoryGraph({ nodes: rawNodes, edges, onNodeClick }: MemoryGraph
       const w = canvas.width;
       const h = canvas.height;
       const nodes = nodesRef.current;
+      const nodeColors = getNodeColors();
+      const theme = getThemeColors();
 
       if (nodes.length > 0 && !dragRef.current) {
         simulate(nodes, edges, w, h);
@@ -183,15 +193,14 @@ export function MemoryGraph({ nodes: rawNodes, edges, onNodeClick }: MemoryGraph
       ctx.save();
       ctx.clearRect(0, 0, w, h);
 
-      // Background
-      ctx.fillStyle = "#0a0a0a";
+      ctx.fillStyle = theme.bg;
       ctx.fillRect(0, 0, w, h);
 
       ctx.translate(panRef.current.x, panRef.current.y);
       ctx.scale(scaleRef.current, scaleRef.current);
 
-      // Draw edges
-      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      // Edges
+      ctx.strokeStyle = theme.border + "40";
       ctx.lineWidth = 1;
       for (const edge of edges) {
         const s = nodes.find((n) => n.id === edge.source);
@@ -203,13 +212,12 @@ export function MemoryGraph({ nodes: rawNodes, edges, onNodeClick }: MemoryGraph
         ctx.stroke();
       }
 
-      // Draw nodes
+      // Nodes
       for (const node of nodes) {
         const r = NODE_RADII[node.group] ?? 14;
-        const color = NODE_COLORS[node.type] ?? NODE_COLORS.tag;
+        const color = nodeColors[node.type] ?? nodeColors.tag;
         const isHovered = node.id === hoveredNode;
 
-        // Glow for hovered
         if (isHovered) {
           ctx.beginPath();
           ctx.arc(node.x, node.y, r + 6, 0, Math.PI * 2);
@@ -217,21 +225,18 @@ export function MemoryGraph({ nodes: rawNodes, edges, onNodeClick }: MemoryGraph
           ctx.fill();
         }
 
-        // Node circle
         ctx.beginPath();
         ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
         ctx.fillStyle = isHovered ? color : color + "cc";
         ctx.fill();
 
-        // Border
-        ctx.strokeStyle = isHovered ? "#fff" : color;
+        ctx.strokeStyle = isHovered ? theme.fg : color;
         ctx.lineWidth = isHovered ? 2 : 1;
         ctx.stroke();
 
-        // Label
         const fontSize = node.group === "tag" ? 9 : 11;
         ctx.font = `${isHovered ? "bold " : ""}${fontSize}px system-ui, sans-serif`;
-        ctx.fillStyle = isHovered ? "#fff" : "rgba(255,255,255,0.7)";
+        ctx.fillStyle = isHovered ? theme.fg : theme.fg + "b0";
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
 
@@ -247,7 +252,6 @@ export function MemoryGraph({ nodes: rawNodes, edges, onNodeClick }: MemoryGraph
     return () => cancelAnimationFrame(animRef.current);
   }, [edges, hoveredNode]);
 
-  // Resize canvas to fill container
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -264,7 +268,6 @@ export function MemoryGraph({ nodes: rawNodes, edges, onNodeClick }: MemoryGraph
     return () => window.removeEventListener("resize", resize);
   }, []);
 
-  // Mouse handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -307,7 +310,6 @@ export function MemoryGraph({ nodes: rawNodes, edges, onNodeClick }: MemoryGraph
       return;
     }
 
-    // Hover detection
     const { x: wx, y: wy } = screenToWorld(sx, sy);
     const idx = nodeAt(wx, wy);
     const hId = idx >= 0 ? nodesRef.current[idx].id : null;
@@ -346,7 +348,6 @@ export function MemoryGraph({ nodes: rawNodes, edges, onNodeClick }: MemoryGraph
     const factor = e.deltaY < 0 ? 1.1 : 0.9;
     const newScale = Math.min(Math.max(oldScale * factor, 0.2), 5);
 
-    // Zoom toward cursor
     panRef.current.x = sx - (sx - panRef.current.x) * (newScale / oldScale);
     panRef.current.y = sy - (sy - panRef.current.y) * (newScale / oldScale);
     scaleRef.current = newScale;

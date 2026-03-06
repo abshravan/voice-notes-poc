@@ -7,21 +7,21 @@ import { api } from "@/services/api";
 
 const TYPE_STYLES = {
   idea: {
-    bg: "bg-purple-50 dark:bg-purple-950/20",
-    border: "border-purple-300 dark:border-purple-700",
-    badge: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+    bg: "bg-idea-bg",
+    border: "border-idea-subtle",
+    badge: "bg-idea-subtle text-idea",
     label: "Idea",
   },
   task: {
-    bg: "bg-orange-50 dark:bg-orange-950/20",
-    border: "border-orange-300 dark:border-orange-700",
-    badge: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
+    bg: "bg-task-bg",
+    border: "border-task-subtle",
+    badge: "bg-task-subtle text-task",
     label: "Task",
   },
   note: {
-    bg: "bg-blue-50 dark:bg-blue-950/20",
-    border: "border-blue-300 dark:border-blue-700",
-    badge: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+    bg: "bg-note-bg",
+    border: "border-note-subtle",
+    badge: "bg-note-subtle text-note",
     label: "Note",
   },
 };
@@ -46,18 +46,18 @@ export default function MemoryDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-sm text-foreground/40">Loading memory...</p>
+      <div className="flex h-full items-center justify-center">
+        <p className="text-sm text-muted">Loading memory...</p>
       </div>
     );
   }
 
   if (error || !memory) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
-        <p className="text-sm text-red-500">Memory not found.</p>
-        <Link href="/memories" className="text-sm text-foreground/60 hover:text-foreground">
-          &larr; Back to memories
+      <div className="flex h-full flex-col items-center justify-center gap-4">
+        <p className="text-sm text-danger">Memory not found.</p>
+        <Link href="/memories" className="text-sm text-muted hover:text-foreground">
+          Back to memories
         </Link>
       </div>
     );
@@ -72,104 +72,96 @@ export default function MemoryDetailPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-background">
-      {/* Header */}
-      <header className="flex w-full items-center justify-between border-b border-foreground/10 px-6 py-4">
-        <Link
-          href="/memories"
-          className="text-sm font-medium text-foreground/60 hover:text-foreground"
-        >
-          &larr; Memories
+    <div className="mx-auto max-w-3xl px-8 py-10">
+      {/* Top bar */}
+      <div className="mb-8 flex items-center justify-between">
+        <Link href="/memories" className="text-[13px] font-medium text-muted hover:text-foreground transition-colors">
+          &larr; Back to Memories
         </Link>
-        <h1 className="text-lg font-semibold">Detail</h1>
         <button
           onClick={handleDelete}
           disabled={deleteMutation.isPending}
-          className="text-sm font-medium text-red-500 hover:text-red-600 disabled:opacity-50"
+          className="text-[13px] font-medium text-danger hover:text-danger/80 disabled:opacity-50 transition-colors"
         >
           {deleteMutation.isPending ? "Deleting..." : "Delete"}
         </button>
-      </header>
+      </div>
 
-      <main className="flex w-full max-w-2xl flex-col gap-6 p-6">
-        {/* Type badge + title */}
-        <div className="flex items-start gap-3">
-          <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${style.badge}`}>
-            {style.label}
-          </span>
-          <h2 className="text-xl font-bold leading-tight text-foreground">
-            {memory.title}
-          </h2>
+      {/* Type badge + title */}
+      <div className="mb-2 flex items-start gap-3">
+        <span className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-semibold ${style.badge}`}>
+          {style.label}
+        </span>
+        <h1 className="text-xl font-bold leading-tight text-foreground">
+          {memory.title}
+        </h1>
+      </div>
+
+      {/* Timestamp */}
+      <p className="mb-6 text-[11px] text-muted">
+        {formatDate(memory.created_at)}
+      </p>
+
+      {/* Audio player */}
+      {memory.audio_url && (
+        <div className={`mb-6 rounded-lg border ${style.border} ${style.bg} p-4`}>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
+            Audio Recording
+          </p>
+          <audio controls className="w-full" preload="metadata">
+            <source src={api.audioUrl(memory.id)} />
+            Your browser does not support audio playback.
+          </audio>
         </div>
+      )}
 
-        {/* Timestamp */}
-        <p className="text-xs text-foreground/40">
-          {formatDate(memory.created_at)}
+      {/* Content */}
+      <div className={`rounded-lg border ${style.border} ${style.bg} p-5 space-y-4`}>
+        <p className="text-sm leading-relaxed text-foreground/80">
+          {memory.content}
         </p>
 
-        {/* Audio player */}
-        {memory.audio_url && (
-          <div className={`rounded-lg border ${style.border} ${style.bg} p-4`}>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-foreground/40">
-              Audio Recording
+        {memory.type === "task" && memory.action_items.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+              Action Items
             </p>
-            <audio controls className="w-full" preload="metadata">
-              <source src={api.audioUrl(memory.id)} />
-              Your browser does not support audio playback.
-            </audio>
-          </div>
-        )}
-
-        {/* Content */}
-        <div className={`rounded-lg border ${style.border} ${style.bg} p-5 space-y-4`}>
-          <p className="text-sm leading-relaxed text-foreground/75">
-            {memory.content}
-          </p>
-
-          {/* Action items for tasks */}
-          {memory.type === "task" && memory.action_items.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-foreground/40">
-                Action Items
-              </p>
-              <ul className="space-y-1">
-                {memory.action_items.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-foreground/70">
-                    <span className="mt-1 h-3.5 w-3.5 shrink-0 rounded border border-foreground/20" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Tags */}
-          {memory.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {memory.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full bg-foreground/5 px-2 py-0.5 text-xs text-foreground/50"
-                >
-                  #{tag}
-                </span>
+            <ul className="space-y-1">
+              {memory.action_items.map((item, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-foreground/75">
+                  <span className="mt-1 h-3.5 w-3.5 shrink-0 rounded border border-border" />
+                  {item}
+                </li>
               ))}
-            </div>
-          )}
-        </div>
-
-        {/* Raw transcript */}
-        {memory.transcript && (
-          <div className="rounded-lg border border-foreground/10 p-5">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-foreground/40">
-              Raw Transcript
-            </p>
-            <p className="text-sm leading-relaxed text-foreground/50 italic">
-              {memory.transcript}
-            </p>
+            </ul>
           </div>
         )}
-      </main>
+
+        {memory.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {memory.tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-md bg-surface px-2 py-0.5 text-[11px] text-muted"
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Raw transcript */}
+      {memory.transcript && (
+        <div className="mt-6 rounded-lg border border-border p-5">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
+            Raw Transcript
+          </p>
+          <p className="text-sm leading-relaxed text-muted italic">
+            {memory.transcript}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

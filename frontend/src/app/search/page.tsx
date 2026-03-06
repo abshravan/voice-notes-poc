@@ -17,81 +17,70 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-background">
-      {/* Header */}
-      <header className="flex w-full items-center justify-between border-b border-foreground/10 px-6 py-4">
-        <Link
-          href="/"
-          className="text-sm font-medium text-foreground/60 hover:text-foreground"
+    <div className="mx-auto max-w-3xl px-8 py-10">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Search</h1>
+        <p className="mt-1 text-[13px] text-muted">Find memories using natural language</p>
+      </div>
+
+      <form onSubmit={handleSearch} className="mb-8 flex gap-2">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search your memories..."
+          className="flex-1 rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+        />
+        <button
+          type="submit"
+          disabled={!query.trim() || searchMutation.isPending}
+          className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
         >
-          &larr; Home
-        </Link>
-        <h1 className="text-lg font-semibold">Search Memories</h1>
-        <div className="w-12" />
-      </header>
+          {searchMutation.isPending ? "Searching..." : "Search"}
+        </button>
+      </form>
 
-      <main className="flex w-full max-w-2xl flex-col gap-6 p-6">
-        {/* Search form */}
-        <form onSubmit={handleSearch} className="flex gap-3">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search your memories..."
-            className="flex-1 rounded-lg border border-foreground/15 bg-background px-4 py-3 text-sm text-foreground placeholder:text-foreground/30 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-          <button
-            type="submit"
-            disabled={!query.trim() || searchMutation.isPending}
-            className="rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-          >
-            {searchMutation.isPending ? "Searching..." : "Search"}
-          </button>
-        </form>
+      {searchMutation.isPending && (
+        <p className="py-8 text-center text-sm text-muted">
+          Searching across your memories...
+        </p>
+      )}
 
-        {/* Results */}
-        {searchMutation.isPending && (
-          <p className="py-8 text-center text-sm text-foreground/40">
-            Searching across your memories...
+      {searchMutation.isError && (
+        <p className="py-8 text-center text-sm text-danger">
+          Search failed: {searchMutation.error.message}
+        </p>
+      )}
+
+      {searchMutation.isSuccess && searchMutation.data.length === 0 && (
+        <p className="py-8 text-center text-sm text-muted">
+          No matching memories found.
+        </p>
+      )}
+
+      {searchMutation.isSuccess && searchMutation.data.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <p className="text-[11px] text-muted">
+            {searchMutation.data.length} result{searchMutation.data.length !== 1 ? "s" : ""}
           </p>
-        )}
-
-        {searchMutation.isError && (
-          <p className="py-8 text-center text-sm text-red-500">
-            Search failed: {searchMutation.error.message}
-          </p>
-        )}
-
-        {searchMutation.isSuccess && searchMutation.data.length === 0 && (
-          <p className="py-8 text-center text-sm text-foreground/40">
-            No matching memories found.
-          </p>
-        )}
-
-        {searchMutation.isSuccess && searchMutation.data.length > 0 && (
-          <div className="flex flex-col items-center gap-4">
-            <p className="text-xs text-foreground/40">
-              {searchMutation.data.length} result{searchMutation.data.length !== 1 ? "s" : ""}
-            </p>
-            {searchMutation.data.map((result) => (
-              <Link key={result.memory.id} href={`/memories/${result.memory.id}`} className="w-full max-w-md">
-                <MemoryCard
-                  memory={{
-                    type: result.memory.type,
-                    title: result.memory.title,
-                    content: result.memory.content,
-                    tags: result.memory.tags,
-                    action_items: result.memory.action_items || [],
-                  }}
-                />
-                <p className="mt-1 text-right text-xs text-foreground/30">
-                  Relevance: {(result.score * 100).toFixed(1)}%
-                </p>
-              </Link>
-            ))}
-          </div>
-        )}
-      </main>
+          {searchMutation.data.map((result) => (
+            <Link key={result.memory.id} href={`/memories/${result.memory.id}`} className="block">
+              <MemoryCard
+                memory={{
+                  type: result.memory.type,
+                  title: result.memory.title,
+                  content: result.memory.content,
+                  tags: result.memory.tags,
+                  action_items: result.memory.action_items || [],
+                }}
+              />
+              <p className="mt-1 text-right text-[11px] text-muted">
+                Relevance: {(result.score * 100).toFixed(1)}%
+              </p>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

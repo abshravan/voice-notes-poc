@@ -96,15 +96,15 @@ def test_transcribe_invalid_format():
     assert response.status_code == 400
 
 
-def test_transcription_service_no_api_key():
-    """Test that transcription gracefully handles missing API key."""
+def test_transcription_service_whisper_failure():
+    """Test that transcription gracefully handles Whisper failure."""
     import asyncio
     from app.services.transcription import transcribe_audio
 
-    with patch("app.services.transcription.settings") as mock_settings:
-        mock_settings.openai_api_key = ""
+    with patch("app.services.transcription._get_whisper_model") as mock_model:
+        mock_model.return_value.transcribe.side_effect = Exception("Model not loaded")
         result = asyncio.get_event_loop().run_until_complete(
             transcribe_audio(b"\x00" * 100, "audio/webm")
         )
-        assert "unavailable" in result["transcript"].lower()
+        assert "failed" in result["transcript"].lower()
         assert result["language"] == "unknown"

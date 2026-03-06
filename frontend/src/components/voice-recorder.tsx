@@ -16,10 +16,6 @@ function formatTime(seconds: number): string {
   return `${m}:${s}`;
 }
 
-/**
- * Main voice recording component.
- * Handles the full recording lifecycle: idle → recording → stopped → review.
- */
 export function VoiceRecorder() {
   const { state, duration, audioBlob, audioUrl, analyserNode, start, pause, resume, stop, reset } =
     useAudioRecorder();
@@ -53,7 +49,6 @@ export function VoiceRecorder() {
 
   return (
     <div className="flex flex-col items-center gap-6">
-      {/* Waveform visualizer */}
       <AudioVisualizer
         analyserNode={analyserNode}
         isActive={state === "recording"}
@@ -61,17 +56,14 @@ export function VoiceRecorder() {
         height={100}
       />
 
-      {/* Timer display */}
       <div className="text-4xl font-mono font-semibold tabular-nums tracking-wider text-foreground">
         {formatTime(duration)}
       </div>
 
-      {/* Recording state label */}
       <StatusLabel state={state} />
 
-      {/* Upload + transcription status feedback */}
       {uploadMutation.isPending && (
-        <div className="flex items-center gap-2 text-sm text-blue-500">
+        <div className="flex items-center gap-2 text-sm text-accent">
           <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -81,24 +73,23 @@ export function VoiceRecorder() {
       )}
       {uploadMutation.isSuccess && (
         <div className="w-full max-w-md space-y-3">
-          <div className="rounded-lg border border-green-500/30 bg-green-50 p-4 text-sm text-green-700 dark:bg-green-950/20 dark:text-green-400">
+          <div className="rounded-lg border border-accent/30 bg-accent/5 p-4 text-sm text-accent">
             <p className="font-medium">Processed successfully</p>
-            <p className="mt-1 text-xs opacity-70">
+            <p className="mt-1 text-[11px] opacity-70">
               ID: {uploadMutation.data.id} &middot;{" "}
               {(uploadMutation.data.file_size / 1024).toFixed(1)} KB
               {uploadMutation.data.duration_seconds > 0 &&
                 ` \u00b7 ${uploadMutation.data.duration_seconds.toFixed(1)}s`}
             </p>
           </div>
-          {/* Show structured memory card if LLM produced one */}
           {uploadMutation.data.memory ? (
             <MemoryCard
               memory={uploadMutation.data.memory}
               transcript={uploadMutation.data.transcript}
             />
           ) : uploadMutation.data.transcript ? (
-            <div className="rounded-lg border border-foreground/10 p-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-foreground/40">
+            <div className="rounded-lg border border-border p-4">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
                 Transcript
               </p>
               <p className="text-sm leading-relaxed text-foreground/80">
@@ -109,7 +100,7 @@ export function VoiceRecorder() {
           {uploadMutation.data.memory_id && (
             <Link
               href={`/memories/${uploadMutation.data.memory_id}`}
-              className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+              className="inline-flex items-center gap-2 text-sm font-medium text-accent hover:text-accent-hover"
             >
               View memory &rarr;
             </Link>
@@ -117,12 +108,11 @@ export function VoiceRecorder() {
         </div>
       )}
       {uploadMutation.isError && (
-        <p className="text-sm text-red-500">
+        <p className="text-sm text-danger">
           Upload failed: {uploadMutation.error.message}
         </p>
       )}
 
-      {/* Control buttons */}
       <div className="flex items-center gap-4">
         {state === "idle" && (
           <RecordButton onClick={handleStart} label="Record" />
@@ -154,7 +144,6 @@ export function VoiceRecorder() {
         )}
       </div>
 
-      {/* Audio playback when stopped */}
       {state === "stopped" && audioUrl && (
         <audio controls src={audioUrl} className="mt-4 w-full max-w-sm" />
       )}
@@ -170,10 +159,10 @@ function StatusLabel({ state }: { state: RecordingState }) {
     stopped: "Recording complete",
   };
   const colors: Record<RecordingState, string> = {
-    idle: "text-foreground/40",
-    recording: "text-red-500",
-    paused: "text-yellow-500",
-    stopped: "text-green-600",
+    idle: "text-muted",
+    recording: "text-danger",
+    paused: "text-task",
+    stopped: "text-accent",
   };
   return (
     <p className={`text-sm font-medium ${colors[state]}`}>{labels[state]}</p>
@@ -184,7 +173,7 @@ function RecordButton({ onClick, label }: { onClick: () => void; label: string }
   return (
     <button
       onClick={onClick}
-      className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white shadow-lg transition-transform hover:scale-105 hover:bg-red-600 active:scale-95"
+      className="flex h-16 w-16 items-center justify-center rounded-full bg-danger text-white shadow-lg transition-transform hover:scale-105 hover:bg-danger/90 active:scale-95"
       aria-label={label}
     >
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -223,7 +212,7 @@ function ControlButton({
   return (
     <button
       onClick={onClick}
-      className="flex h-12 items-center gap-2 rounded-full border border-foreground/15 bg-background px-5 text-sm font-medium text-foreground transition-colors hover:bg-foreground/5 active:bg-foreground/10"
+      className="flex h-12 items-center gap-2 rounded-full border border-border bg-background px-5 text-sm font-medium text-foreground transition-colors hover:bg-surface active:bg-surface-hover"
       aria-label={label}
     >
       {icon === "pause" && (
@@ -261,10 +250,9 @@ function UploadButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex h-12 items-center gap-2 rounded-full bg-blue-600 px-5 text-sm font-medium text-white shadow-md transition-transform hover:scale-105 hover:bg-blue-700 active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
+      className="flex h-12 items-center gap-2 rounded-full bg-accent px-5 text-sm font-medium text-white shadow-md transition-transform hover:scale-105 hover:bg-accent-hover active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
     >
       {isUploading ? (
-        // Spinner
         <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />

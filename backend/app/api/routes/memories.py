@@ -103,7 +103,7 @@ async def search_memories(
     if embedding is None:
         raise HTTPException(
             status_code=503,
-            detail="Embedding service unavailable. Check OpenAI API key.",
+            detail="Embedding service unavailable. Check Ollama connection.",
         )
 
     try:

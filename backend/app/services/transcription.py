@@ -1,52 +1,49 @@
 import logging
 import tempfile
 import os
-from io import BytesIO
-
-from openai import OpenAI
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Lazy-loaded whisper model
+_whisper_model = None
+
+
+def _get_whisper_model():
+    """Load whisper model on first use to avoid slow startup."""
+    global _whisper_model
+    if _whisper_model is None:
+        import whisper
+        model_name = settings.whisper_model
+        logger.info("Loading Whisper model: %s", model_name)
+        _whisper_model = whisper.load_model(model_name)
+        logger.info("Whisper model loaded successfully")
+    return _whisper_model
+
 
 async def transcribe_audio(file_bytes: bytes, content_type: str) -> dict:
     """
-    Transcribe audio bytes using OpenAI's Whisper API.
-
+    Transcribe audio bytes using local Whisper model.
     Returns dict with transcript text and detected language.
-    Falls back to a placeholder if no API key is configured.
     """
-    if not settings.openai_api_key:
-        logger.warning("No OpenAI API key configured — returning placeholder transcript")
-        return {
-            "transcript": "[Transcription unavailable — set OPENAI_API_KEY]",
-            "language": "unknown",
-            "duration_seconds": 0.0,
-        }
-
-    client = OpenAI(api_key=settings.openai_api_key)
-
-    # Whisper API requires a file-like object with a filename
     ext = _extension_from_content_type(content_type)
     suffix = ext or ".webm"
 
-    # Write to a temp file since the API needs a named file
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(file_bytes)
         tmp_path = tmp.name
 
     try:
-        with open(tmp_path, "rb") as audio_file:
-            response = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file,
-                response_format="verbose_json",
-            )
+        model = _get_whisper_model()
+        result = model.transcribe(tmp_path)
 
-        transcript = response.text.strip()
-        language = getattr(response, "language", "unknown")
-        duration = getattr(response, "duration", 0.0)
+        transcript = result.get("text", "").strip()
+        language = result.get("language", "unknown")
+
+        # Estimate duration from segments
+        segments = result.get("segments", [])
+        duration = segments[-1]["end"] if segments else 0.0
 
         logger.info(
             "Transcription complete: %d chars, language=%s, duration=%.1fs",
@@ -57,6 +54,13 @@ async def transcribe_audio(file_bytes: bytes, content_type: str) -> dict:
             "transcript": transcript,
             "language": language,
             "duration_seconds": duration,
+        }
+    except Exception as e:
+        logger.error("Whisper transcription failed: %s", e)
+        return {
+            "transcript": f"[Transcription failed: {e}]",
+            "language": "unknown",
+            "duration_seconds": 0.0,
         }
     finally:
         os.unlink(tmp_path)

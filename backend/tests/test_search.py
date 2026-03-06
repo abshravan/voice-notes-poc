@@ -10,7 +10,7 @@ from app.services.embeddings import generate_embedding
 
 client = TestClient(app)
 
-MOCK_EMBEDDING = [0.1] * 1536
+MOCK_EMBEDDING = [0.1] * 768
 
 
 def test_search_empty_query():
@@ -22,8 +22,8 @@ def test_search_empty_query():
     assert response.status_code == 400
 
 
-def test_search_no_api_key():
-    """Test search returns 503 when OpenAI key is missing."""
+def test_search_no_embedding_service():
+    """Test search returns 503 when embedding service is unavailable."""
     with patch(
         "app.api.routes.memories.generate_embedding",
         new_callable=AsyncMock,
@@ -61,7 +61,6 @@ def test_search_qdrant_unavailable():
 
 def test_search_returns_results():
     """Test search returns hydrated results when everything works."""
-    # Create a mock memory object
     mock_mem = MagicMock()
     mock_mem.id = "mem123"
     mock_mem.type = "idea"
@@ -73,6 +72,7 @@ def test_search_returns_results():
     mock_mem.created_at = datetime(2026, 3, 5, tzinfo=timezone.utc)
     mock_mem.updated_at = datetime(2026, 3, 5, tzinfo=timezone.utc)
     mock_mem.status = "processed"
+    mock_mem.action_items = []
 
     with (
         patch(
@@ -104,11 +104,16 @@ def test_search_returns_results():
         assert data[0]["score"] == 0.92
 
 
-def test_embedding_no_api_key():
-    """Test embedding returns None without API key."""
+def test_embedding_ollama_unavailable():
+    """Test embedding returns None when Ollama is not reachable."""
     import asyncio
-    with patch("app.services.embeddings.settings") as mock_settings:
-        mock_settings.openai_api_key = ""
+    with patch("app.services.embeddings.httpx") as mock_httpx:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.post = AsyncMock(side_effect=Exception("Connection refused"))
+        mock_httpx.AsyncClient.return_value = mock_client
+
         result = asyncio.get_event_loop().run_until_complete(
             generate_embedding("test text")
         )

@@ -57,98 +57,75 @@ export default function MemoriesPage() {
   );
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-background">
-      {/* Header */}
-      <header className="flex w-full items-center justify-between border-b border-foreground/10 px-6 py-4">
-        <Link
-          href="/"
-          className="text-sm font-medium text-foreground/60 hover:text-foreground"
-        >
-          &larr; Home
-        </Link>
-        <h1 className="text-lg font-semibold">Memories</h1>
-        <div className="flex items-center gap-4">
-          <Link
-            href="/graph"
-            className="text-sm font-medium text-foreground/60 hover:text-foreground"
+    <div className="mx-auto max-w-3xl px-8 py-10">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Memories</h1>
+        <p className="mt-1 text-[13px] text-muted">All your captured voice notes</p>
+      </div>
+
+      {/* Filter tabs */}
+      <div className="mb-6 flex gap-1.5">
+        {FILTER_OPTIONS.map((opt) => (
+          <button
+            key={opt.label}
+            onClick={() => setFilter(opt.value)}
+            className={`rounded-md px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
+              filter === opt.value
+                ? "bg-accent text-white"
+                : "bg-surface text-muted hover:bg-surface-hover hover:text-foreground"
+            }`}
           >
-            Mind Map
-          </Link>
-          <Link
-            href="/record"
-            className="text-sm font-medium text-red-500 hover:text-red-600"
-          >
-            + New
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {isLoading && (
+        <p className="py-12 text-center text-sm text-muted">Loading memories...</p>
+      )}
+
+      {error && (
+        <p className="py-12 text-center text-sm text-danger">
+          Failed to load memories. Is the backend running?
+        </p>
+      )}
+
+      {memories && memories.length === 0 && (
+        <div className="py-12 text-center">
+          <p className="text-muted">No memories yet.</p>
+          <Link href="/record" className="mt-2 inline-block text-sm text-accent hover:underline">
+            Record your first voice note
           </Link>
         </div>
-      </header>
+      )}
 
-      <main className="flex w-full max-w-2xl flex-col gap-4 p-6">
-        {/* Filter tabs */}
-        <div className="flex gap-2">
-          {FILTER_OPTIONS.map((opt) => (
-            <button
-              key={opt.label}
-              onClick={() => setFilter(opt.value)}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                filter === opt.value
-                  ? "bg-foreground text-background"
-                  : "bg-foreground/5 text-foreground/60 hover:bg-foreground/10"
-              }`}
-            >
-              {opt.label}
-            </button>
+      {grouped.length > 0 && (
+        <div className="flex flex-col gap-8">
+          {grouped.map((group) => (
+            <section key={group.label}>
+              <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted">
+                {group.label}
+              </h2>
+              <div className="flex flex-col gap-2">
+                {group.items.map((mem) => (
+                  <Link key={mem.id} href={`/memories/${mem.id}`} className="block">
+                    <MemoryCard
+                      memory={{
+                        type: mem.type,
+                        title: mem.title,
+                        content: mem.content,
+                        tags: mem.tags,
+                        action_items: mem.action_items || [],
+                      }}
+                      timestamp={mem.created_at}
+                    />
+                  </Link>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
-
-        {/* Content */}
-        {isLoading && (
-          <p className="py-12 text-center text-sm text-foreground/40">Loading memories...</p>
-        )}
-
-        {error && (
-          <p className="py-12 text-center text-sm text-red-500">
-            Failed to load memories. Is the backend running?
-          </p>
-        )}
-
-        {memories && memories.length === 0 && (
-          <div className="py-12 text-center">
-            <p className="text-foreground/40">No memories yet.</p>
-            <Link href="/record" className="mt-2 inline-block text-sm text-red-500 hover:underline">
-              Record your first voice note
-            </Link>
-          </div>
-        )}
-
-        {grouped.length > 0 && (
-          <div className="flex flex-col gap-6">
-            {grouped.map((group) => (
-              <section key={group.label}>
-                <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground/40">
-                  {group.label}
-                </h2>
-                <div className="flex flex-col items-center gap-4">
-                  {group.items.map((mem) => (
-                    <Link key={mem.id} href={`/memories/${mem.id}`} className="w-full max-w-md">
-                      <MemoryCard
-                        memory={{
-                          type: mem.type,
-                          title: mem.title,
-                          content: mem.content,
-                          tags: mem.tags,
-                          action_items: mem.action_items || [],
-                        }}
-                        timestamp={mem.created_at}
-                      />
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-        )}
-      </main>
+      )}
     </div>
   );
 }

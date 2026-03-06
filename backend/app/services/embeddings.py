@@ -1,39 +1,48 @@
-"""Generate text embeddings via OpenAI's embedding API."""
+"""Generate text embeddings via Ollama's local embedding API."""
 
 import logging
 
-from openai import OpenAI
+import httpx
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-EMBEDDING_MODEL = "text-embedding-3-small"
-EMBEDDING_DIM = 1536
+EMBEDDING_DIM = 768  # nomic-embed-text default dimension
 
 
 async def generate_embedding(text: str) -> list[float] | None:
     """
-    Generate a vector embedding for the given text.
-    Returns None if OpenAI API key is not configured.
+    Generate a vector embedding for the given text using Ollama.
+    Returns None if Ollama is not reachable.
     """
-    if not settings.openai_api_key:
-        logger.warning("No OpenAI API key — skipping embedding generation")
-        return None
-
     if not text.strip():
         return None
 
-    client = OpenAI(api_key=settings.openai_api_key)
+    ollama_url = settings.ollama_url
+    embed_model = settings.ollama_embed_model
 
     try:
-        response = client.embeddings.create(
-            model=EMBEDDING_MODEL,
-            input=text[:8000],  # trim to stay within token limits
-        )
-        embedding = response.data[0].embedding
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                f"{ollama_url}/api/embed",
+                json={
+                    "model": embed_model,
+                    "input": text[:8000],
+                },
+            )
+            response.raise_for_status()
+
+        data = response.json()
+        embeddings = data.get("embeddings", [])
+        if not embeddings:
+            logger.warning("No embeddings returned from Ollama")
+            return None
+
+        embedding = embeddings[0]
         logger.info("Generated embedding: dim=%d", len(embedding))
         return embedding
+
     except Exception as e:
         logger.error("Embedding generation failed: %s", e)
         return None
